@@ -33,6 +33,7 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
+import android.view.KeyEvent;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -41,6 +42,7 @@ import java.util.List;
 import edu.usf.cutr.opentripplanner.android.fragments.DirectionListFragment;
 import edu.usf.cutr.opentripplanner.android.fragments.MainFragment;
 import edu.usf.cutr.opentripplanner.android.listeners.DateCompleteListener;
+import edu.usf.cutr.opentripplanner.android.listeners.KeyboardEventListener;
 import edu.usf.cutr.opentripplanner.android.listeners.OtpFragment;
 import edu.usf.cutr.opentripplanner.android.model.OTPBundle;
 
@@ -70,6 +72,8 @@ public class MyActivity extends FragmentActivity implements OtpFragment {
     private boolean isButtonStartLocation = false;
 
     DateCompleteListener dateCompleteCallback;
+
+    KeyboardEventListener mKeyboardEventCallback;
 
     /** Called when the activity is first created. */
     @Override
@@ -265,6 +269,29 @@ public class MyActivity extends FragmentActivity implements OtpFragment {
 
     public void onDateComplete(Date tripDate, boolean scheduleType) {
         dateCompleteCallback.onDateComplete(tripDate, scheduleType);
+    }
+
+    public void setKeyboardEventCallback(KeyboardEventListener callback) {
+        this.mKeyboardEventCallback = callback;
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_A || keyCode == KeyEvent.KEYCODE_D){
+            mKeyboardEventCallback.onKeyboardChangeBearing(keyCode == KeyEvent.KEYCODE_A);
+            return false;
+        }
+        if (keyCode == KeyEvent.KEYCODE_W || keyCode == KeyEvent.KEYCODE_S){
+            mKeyboardEventCallback.onKeyboardChangeTilt(keyCode == KeyEvent.KEYCODE_W);
+            return false;
+        }
+        if (keyCode == KeyEvent.KEYCODE_Q || keyCode == KeyEvent.KEYCODE_E){
+            mKeyboardEventCallback.onKeyboardChangeZoom(keyCode == KeyEvent.KEYCODE_Q);
+            return false;
+        }
+
+        return super.onKeyDown(keyCode, event);
+
     }
 
 }

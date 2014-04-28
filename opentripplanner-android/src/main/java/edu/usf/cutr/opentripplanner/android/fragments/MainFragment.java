@@ -129,6 +129,7 @@ import edu.usf.cutr.opentripplanner.android.OTPApp;
 import edu.usf.cutr.opentripplanner.android.R;
 import edu.usf.cutr.opentripplanner.android.SettingsActivity;
 import edu.usf.cutr.opentripplanner.android.listeners.DateCompleteListener;
+import edu.usf.cutr.opentripplanner.android.listeners.KeyboardEventListener;
 import edu.usf.cutr.opentripplanner.android.listeners.MetadataRequestCompleteListener;
 import edu.usf.cutr.opentripplanner.android.listeners.OTPGeocodingListener;
 import edu.usf.cutr.opentripplanner.android.listeners.OtpFragment;
@@ -167,7 +168,8 @@ public class MainFragment extends Fragment implements
         OTPGeocodingListener, DateCompleteListener, OnRangeSeekBarChangeListener<Double>,
         GooglePlayServicesClient.OnConnectionFailedListener,
         GooglePlayServicesClient.ConnectionCallbacks,
-        GoogleMap.OnCameraChangeListener {
+        GoogleMap.OnCameraChangeListener,
+        KeyboardEventListener{
 
     private static LocationManager sLocationManager;
 
@@ -313,6 +315,7 @@ public class MainFragment extends Fragment implements
         super.onAttach(activity);
         try {
             ((MyActivity) activity).setDateCompleteCallback(this);
+            ((MyActivity) activity).setKeyboardEventCallback(this);
             setFragmentListener((OtpFragment) activity);
         } catch (ClassCastException e) {
             throw new ClassCastException(activity.toString()
@@ -2248,7 +2251,7 @@ public class MainFragment extends Fragment implements
         } else {
             geocodingTask.execute(address);
         }
-    }
+            }
 
 
     @Override
@@ -2755,7 +2758,7 @@ public class MainFragment extends Fragment implements
             }
             if (animateCamera) {
                 mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(boundsCreator.build(),
-                        getResources().getInteger(R.integer.default_padding)));
+                            getResources().getInteger(R.integer.default_padding)));
             }
         }
     }
@@ -3326,6 +3329,74 @@ public class MainFragment extends Fragment implements
         mBikeTriangleMaxValue = maxValue;
         String bikeParam = minValue.toString() + maxValue.toString();
         Log.v(OTPApp.TAG, bikeParam);
+    }
+
+    @Override
+    public void onKeyboardChangeBearing(boolean moveLeft){
+        CameraPosition oldCameraPosition = mMap.getCameraPosition();
+        float newBearing = oldCameraPosition.bearing;
+        float increment = 50;
+
+        if (moveLeft){
+            newBearing -= increment;
+            if (newBearing < 0){
+                newBearing = 360 + newBearing;
+            }
+        }
+        else{
+            newBearing += increment;
+            if (newBearing > 360){
+                newBearing = newBearing - 360;
+            }
+        }
+        CameraPosition newCameraPosition = new CameraPosition(oldCameraPosition.target, oldCameraPosition.zoom, oldCameraPosition.tilt, newBearing);
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(newCameraPosition));
+    }
+
+    @Override
+    public void onKeyboardChangeTilt(boolean tiltUp){
+        CameraPosition oldCameraPosition = mMap.getCameraPosition();
+        float newTilt = oldCameraPosition.tilt;
+        float increment = 20;
+
+        if (tiltUp){
+            newTilt -= increment;
+            if (newTilt < 0){
+                newTilt = 0;
+            }
+        }
+        else{
+            newTilt += increment;
+            if (newTilt > 90){
+                newTilt = 90;
+            }
+        }
+        CameraPosition newCameraPosition = new CameraPosition(oldCameraPosition.target, oldCameraPosition.zoom, newTilt, oldCameraPosition.bearing);
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(newCameraPosition));
+    }
+
+    @Override
+    public void onKeyboardChangeZoom(boolean zoomIn){
+        CameraPosition oldCameraPosition = mMap.getCameraPosition();
+        float newZoom = oldCameraPosition.zoom;
+        float increment = 1;
+
+        if (zoomIn){
+            newZoom -= increment;
+            newZoom = Math.round(newZoom);
+            if (newZoom < 0){
+                newZoom = 0;
+            }
+        }
+        else{
+            newZoom += increment;
+            newZoom = Math.round(newZoom);
+            if (newZoom > mMaxZoomLevel){
+                newZoom = mMaxZoomLevel;
+            }
+        }
+        CameraPosition newCameraPosition = new CameraPosition(oldCameraPosition.target, newZoom, oldCameraPosition.tilt, oldCameraPosition.bearing);
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(newCameraPosition));
     }
 
 }
