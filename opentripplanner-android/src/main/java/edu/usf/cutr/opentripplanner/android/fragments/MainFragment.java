@@ -20,6 +20,7 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.location.LocationClient;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.GoogleMap.OnInfoWindowClickListener;
@@ -63,6 +64,10 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Address;
 import android.location.Location;
 import android.location.LocationManager;
@@ -167,7 +172,11 @@ public class MainFragment extends Fragment implements
         OTPGeocodingListener, DateCompleteListener, OnRangeSeekBarChangeListener<Double>,
         GooglePlayServicesClient.OnConnectionFailedListener,
         GooglePlayServicesClient.ConnectionCallbacks,
-        GoogleMap.OnCameraChangeListener {
+        GoogleMap.OnCameraChangeListener,
+        SensorEventListener {
+
+    private SensorManager mSensorManager;
+    private Sensor mOrientation;
 
     private static LocationManager sLocationManager;
 
@@ -324,6 +333,14 @@ public class MainFragment extends Fragment implements
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
+        mSensorManager = (SensorManager)getActivity().getSystemService(Context.SENSOR_SERVICE);
+
+        mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+
+
+        mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_STATUS_ACCURACY_LOW);
         setHasOptionsMenu(true);
 
         getActivity().getSupportFragmentManager()
@@ -2272,6 +2289,7 @@ public class MainFragment extends Fragment implements
         super.onResume();
         mAppResumed = true;
 
+
         Log.v(OTPApp.TAG, "MainFragment onResume");
     }
 
@@ -2279,6 +2297,8 @@ public class MainFragment extends Fragment implements
     public void onPause() {
 
         super.onPause();
+
+   //     mSensorManager.unregisterListener(this);
     }
 
     @Override
@@ -3347,4 +3367,31 @@ public class MainFragment extends Fragment implements
         Log.v(OTPApp.TAG, bikeParam);
     }
 
+    float[] mGravity;
+    float[] mGeomagnetic;
+    int counter = 0;
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+                counter++;
+        if (counter == 8){
+            float azhimut = event.values[0]; // orientation contains: azimut, pitch and roll
+
+            CameraPosition.Builder cameraBuilder = CameraPosition.builder(mMap.getCameraPosition());
+            //          azimutDeg = lowpassfilter(azimutDeg);
+            cameraBuilder.bearing(azhimut);
+            cameraBuilder.tilt(30);
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraBuilder.build()));
+            counter = 0;
+        }
+
+            }
+
+
+
+
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+    }
 }
