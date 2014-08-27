@@ -42,7 +42,9 @@ import edu.usf.cutr.opentripplanner.android.fragments.DirectionListFragment;
 import edu.usf.cutr.opentripplanner.android.fragments.MainFragment;
 import edu.usf.cutr.opentripplanner.android.listeners.DateCompleteListener;
 import edu.usf.cutr.opentripplanner.android.listeners.OtpFragment;
+import edu.usf.cutr.opentripplanner.android.model.Direction;
 import edu.usf.cutr.opentripplanner.android.model.OTPBundle;
+import edu.usf.cutr.opentripplanner.android.util.DirectionsGenerator;
 
 /**
  * Main Activity for the OTP for Android app
@@ -58,6 +60,8 @@ public class MyActivity extends FragmentActivity implements OtpFragment {
     private List<Leg> currentItinerary = new ArrayList<Leg>();
 
     private List<Itinerary> currentItineraryList = new ArrayList<Itinerary>();
+
+    private List<List<Direction>> currentDirectionsListByItinerary = new ArrayList<List<Direction>>();
 
     private int currentItineraryIndex = -1;
 
@@ -184,29 +188,33 @@ public class MyActivity extends FragmentActivity implements OtpFragment {
         currentItineraryList.clear();
         currentItineraryList.addAll(itineraries);
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        if (prefs.getBoolean(OTPApp.PREFERENCE_KEY_LIVE_UPDATES,true)){
-            boolean realtimeLegsOnItineraries = false;
-            long soonerRealTimeDeparture = Long.MAX_VALUE;
-            for (Itinerary itinerary : itineraries){
-                for (Leg leg : itinerary.legs){
-                    if (leg.realtime){
+        boolean realtimeLegsOnItineraries = false;
+        long soonerRealTimeDeparture = Long.MAX_VALUE;
+        currentDirectionsListByItinerary = new ArrayList<List<Direction>>();
+
+        for (Itinerary itinerary : itineraries){
+            DirectionsGenerator dirGen = new DirectionsGenerator(itinerary.legs, this);
+            currentDirectionsListByItinerary.add(dirGen.getDirections());
+            if (prefs.getBoolean(OTPApp.PREFERENCE_KEY_LIVE_UPDATES,true)) {
+                for (Leg leg : itinerary.legs) {
+                    if (leg.realtime) {
                         long legRealtimeDeparture = Long.parseLong(leg.startTime);
-                        if (legRealtimeDeparture < soonerRealTimeDeparture){
+                        if (legRealtimeDeparture < soonerRealTimeDeparture) {
                             soonerRealTimeDeparture = legRealtimeDeparture;
                         }
                         realtimeLegsOnItineraries = true;
                     }
                 }
-                if (realtimeLegsOnItineraries){
+                if (realtimeLegsOnItineraries) {
                     break;
                 }
             }
-            if (realtimeLegsOnItineraries){
-                SharedPreferences.Editor prefsEditor = prefs.edit();
-                prefsEditor.putBoolean(OTPApp.PREFERENCE_KEY_REALTIME_AVAILABLE, true);
-                prefsEditor.commit();
-                mainFragment.listenForTripTimeUpdates(true, soonerRealTimeDeparture);
-            }
+        }
+        if (realtimeLegsOnItineraries){
+            SharedPreferences.Editor prefsEditor = prefs.edit();
+            prefsEditor.putBoolean(OTPApp.PREFERENCE_KEY_REALTIME_AVAILABLE, true);
+            prefsEditor.commit();
+            mainFragment.listenForTripTimeUpdates(true, soonerRealTimeDeparture);
         }
     }
 
@@ -251,6 +259,7 @@ public class MyActivity extends FragmentActivity implements OtpFragment {
         this.bundle = b;
         this.bundle.setCurrentItineraryIndex(currentItineraryIndex);
         this.bundle.setItineraryList(currentItineraryList);
+        this.bundle.setDirectionsListByItinerary(currentDirectionsListByItinerary);
     }
 
     @Override
@@ -310,4 +319,13 @@ public class MyActivity extends FragmentActivity implements OtpFragment {
         dateCompleteCallback.onDateComplete(tripDate, scheduleType);
     }
 
+    @Override
+    public List<List<Direction>> getDirectionsListByItinerary() {
+        return currentDirectionsListByItinerary;
+    }
+
+    @Override
+    public void setDirectionsListByItinerary(List<List<Direction>> currentDirectionsListByItinerary) {
+        this.currentDirectionsListByItinerary = currentDirectionsListByItinerary;
+    }
 }

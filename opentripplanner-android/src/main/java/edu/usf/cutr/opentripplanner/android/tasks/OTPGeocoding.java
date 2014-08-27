@@ -23,6 +23,9 @@ import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import org.opentripplanner.api.model.Place;
+import org.opentripplanner.api.model.WalkStep;
+
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
@@ -53,6 +56,18 @@ public class OTPGeocoding extends AsyncTask<String, Integer, Long> {
 
     private Server selectedServer;
 
+    private boolean geocodingOtpGeneratedName = false;
+
+    private double originalLatitude;
+
+    private double originalLongitude;
+
+    private String otpGeneratedString;
+
+    private WalkStep walkStep;
+
+    private Place place;
+
     public OTPGeocoding(WeakReference<Activity> activity, Context context, boolean isStartTextbox,
                         boolean geocodingForMarker, Server selectedServer,
                         OTPGeocodingListener callback) {
@@ -64,13 +79,31 @@ public class OTPGeocoding extends AsyncTask<String, Integer, Long> {
         this.geocodingForMarker = geocodingForMarker;
     }
 
+    public OTPGeocoding(Context context, WalkStep walkStep, Place place, OTPGeocodingListener callback) {
+        this.context = context;
+        this.callback = callback;
+        this.geocodingOtpGeneratedName = true;
+        this.walkStep = walkStep;
+        this.place = place;
+    }
+
     protected void onPreExecute() {
         // Do nothing
     }
 
     protected Long doInBackground(String... reqs) {
         long count = reqs.length;
-        addressesReturn = LocationUtil.processGeocoding(context, selectedServer, reqs);
+        if (geocodingOtpGeneratedName){
+            if (reqs.length >= 3){
+                originalLatitude = Double.parseDouble(reqs[0]);
+                originalLongitude = Double.parseDouble(reqs[1]);
+                otpGeneratedString = reqs[2];
+                addressesReturn = LocationUtil.processGeocoding(context, null, reqs);
+            }
+        }
+        else{
+            addressesReturn = LocationUtil.processGeocoding(context, selectedServer, reqs);
+        }
         return count;
     }
 
@@ -95,6 +128,12 @@ public class OTPGeocoding extends AsyncTask<String, Integer, Long> {
     }
 
     protected void onPostExecute(Long result) {
-        callback.onOTPGeocodingComplete(isStartTextbox, addressesReturn, geocodingForMarker);
+        if (geocodingOtpGeneratedName){
+            callback.onOTPGeocodingForOtpGeneratedNameComplete(originalLatitude, originalLongitude,
+                    otpGeneratedString, walkStep, place, addressesReturn);
+        }
+        else{
+            callback.onOTPGeocodingComplete(isStartTextbox, addressesReturn, geocodingForMarker);
+        }
     }
 }

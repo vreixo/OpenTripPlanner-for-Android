@@ -25,6 +25,7 @@ import android.support.v4.app.Fragment;
 
 import java.util.List;
 
+import edu.usf.cutr.opentripplanner.android.model.Direction;
 import edu.usf.cutr.opentripplanner.android.model.OTPBundle;
 
 /**
@@ -61,5 +62,9 @@ public interface OtpFragment {
     public void zoomToLocation(LatLng latLng);
 
     public void setButtonStartLocation(boolean isButtonStartLocation);
+
+    public List<List<Direction>> getDirectionsListByItinerary();
+
+    public void setDirectionsListByItinerary(List<List<Direction>> directionsListByItinerary);
 
 }

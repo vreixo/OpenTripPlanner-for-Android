@@ -16,6 +16,9 @@
 
 package edu.usf.cutr.opentripplanner.android.listeners;
 
+import org.opentripplanner.api.model.Place;
+import org.opentripplanner.api.model.WalkStep;
+
 import java.util.ArrayList;
 
 import edu.usf.cutr.opentripplanner.android.util.CustomAddress;
@@ -28,4 +31,9 @@ public interface OTPGeocodingListener {
 
     public void onOTPGeocodingComplete(boolean isStartTextbox, ArrayList<CustomAddress> addressesReturn,
             boolean geocodingForMarker);
+
+    public void onOTPGeocodingForOtpGeneratedNameComplete(double originalLatitude, double originalLongitude,
+                                                          String otpGeneratedString, WalkStep walkStep,
+                                                          Place place, ArrayList<CustomAddress> addressesReturn);
+
 }

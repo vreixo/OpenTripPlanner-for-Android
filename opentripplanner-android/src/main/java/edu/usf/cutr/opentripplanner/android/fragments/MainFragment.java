@@ -43,7 +43,6 @@ import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -118,6 +117,8 @@ import com.google.android.gms.maps.model.TileOverlayOptions;
 
 import org.opentripplanner.api.model.Itinerary;
 import org.opentripplanner.api.model.Leg;
+import org.opentripplanner.api.model.Place;
+import org.opentripplanner.api.model.WalkStep;
 import org.opentripplanner.api.ws.GraphMetadata;
 import org.opentripplanner.api.ws.Request;
 import org.opentripplanner.index.model.TripTimeShort;
@@ -2817,7 +2818,7 @@ public class MainFragment extends Fragment implements
         Location.distanceBetween(marker.getPosition().latitude, marker.getPosition().longitude,
                 addressLat, addressLon, results);
 
-        if (results[0] < OTPApp.MARKER_GEOCODING_MAX_ERROR) {
+        if (results[0] < OTPApp.GEOCODING_MAX_ERROR) {
             LatLng newLatlng = new LatLng(addressLat, addressLon);
             setMarkerPosition(isStartMarker, newLatlng);
             setTextBoxLocation(address.toString(), isStartMarker);
@@ -2989,6 +2990,8 @@ public class MainFragment extends Fragment implements
 
             int stepIndex = 0;
 
+            DirectionsGenerator directionsGenerator = new DirectionsGenerator(mModeMarkers, mApplicationContext);
+
             for (Leg leg : itinerary) {
                 stepIndex++;
 
@@ -2997,7 +3000,7 @@ public class MainFragment extends Fragment implements
 
                 if (!points.isEmpty()) {
                     MarkerOptions modeMarkerOption = generateModeMarkerOptions(leg, points.get(0),
-                            stepIndex);
+                            stepIndex, directionsGenerator);
 
                     float scaleFactor = getResources().getFraction(R.fraction.scaleFactor, 1, 1);
 
@@ -3007,8 +3010,8 @@ public class MainFragment extends Fragment implements
                     if (TraverseMode.valueOf(leg.mode).isTransit()) {
                         realtime = leg.realtime;
                     }
-                    TripInfo tripInfo = new TripInfo(realtime, leg.tripId,
-                            generateModeMarkerSnippet(leg), leg.departureDelay);
+                    TripInfo tripInfo = new TripInfo(realtime, leg.tripId, leg.to.getLat(),
+                            leg.to.getLon(), generateModeMarkerSnippet(leg), leg.departureDelay);
                     mModeMarkers.put(modeMarker, tripInfo);
 
                     if (TraverseMode.valueOf(leg.mode).isTransit()) {
@@ -3043,7 +3046,7 @@ public class MainFragment extends Fragment implements
         }
     }
 
-    private MarkerOptions generateModeMarkerOptions(Leg leg, LatLng location, int stepIndex){
+    private MarkerOptions generateModeMarkerOptions(Leg leg, LatLng location, int stepIndex, DirectionsGenerator directionsGenerator){
         MarkerOptions modeMarkerOption = new MarkerOptions().position(location);
         Drawable drawable = getResources().getDrawable(getPathIcon(leg.mode));
         if (drawable != null) {
@@ -3055,12 +3058,12 @@ public class MainFragment extends Fragment implements
             Log.e(OTPApp.TAG, "Error obtaining drawable to add mode icons to the map");
         }
 
-        modeMarkerOption.title(generateModeMarkerTitle(leg, stepIndex));
+        modeMarkerOption.title(generateModeMarkerTitle(leg, stepIndex, directionsGenerator));
 
         return modeMarkerOption;
     }
 
-    private String generateModeMarkerTitle(Leg leg, int stepIndex){
+    private String generateModeMarkerTitle(Leg leg, int stepIndex, DirectionsGenerator directionsGenerator){
         TraverseMode traverseMode = TraverseMode.valueOf(leg.mode);
         String title = "";
 
@@ -3069,22 +3072,19 @@ public class MainFragment extends Fragment implements
                     .getRouteShortNameSafe(leg.routeShortName, leg.routeLongName,
                             mApplicationContext)
                     + " " + getResources().getString(R.string.map_markers_connector_before_stop) + " "
-                    + DirectionsGenerator.getLocalizedStreetName(leg.from.name,
-                    mApplicationContext.getResources());
+                    + directionsGenerator.getLocalizedStreetName(null, leg.from);
         }
         else{
             if (traverseMode.equals(TraverseMode.WALK)) {
                 title = stepIndex + ". " + getResources()
                         .getString(R.string.map_markers_mode_walk_action)
                         + " " + getResources().getString(R.string.map_markers_connector_before_destination)
-                        + " " + DirectionsGenerator.getLocalizedStreetName(leg.to.name,
-                        mApplicationContext.getResources());
+                        + " " + directionsGenerator.getLocalizedStreetName(null, leg.to);
             } else if (traverseMode.equals(TraverseMode.BICYCLE)) {
                 title = stepIndex + ". " + getResources()
                         .getString(R.string.map_markers_mode_bicycle_action)
                         + " " + getResources().getString(R.string.map_markers_connector_before_destination)
-                        + " " + DirectionsGenerator.getLocalizedStreetName(leg.to.name,
-                        mApplicationContext.getResources());
+                        + " " + directionsGenerator.getLocalizedStreetName(null, leg.to);
             }
         }
         return title;
@@ -4208,5 +4208,10 @@ public class MainFragment extends Fragment implements
                 listenForTripTimeUpdates(false, 0);
             }
         }
+    }
+
+    @Override
+    public void onOTPGeocodingForOtpGeneratedNameComplete(double originalLatitude, double originalLongitude, String otpGeneratedString, WalkStep walkStep, Place place, ArrayList<CustomAddress> addressesReturn) {
+
     }
 }

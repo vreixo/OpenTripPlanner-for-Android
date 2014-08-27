@@ -18,11 +18,14 @@ package edu.usf.cutr.opentripplanner.android.model;
 
 import java.util.ArrayList;
 
+import edu.usf.cutr.opentripplanner.android.util.DirectionExpandableListAdapter;
 /**
  * @author Khoa Tran
  */
 
 public class Direction {
+
+    private DirectionExpandableListAdapter adapter;
 
     private int icon;
 
@@ -33,6 +36,14 @@ public class Direction {
     private CharSequence service;
 
     private CharSequence place;
+
+    private double originLatitude;
+
+    private double originLongitude;
+
+    private double destinationLatitude;
+
+    private double destinationLongitude;
 
     private CharSequence oldTime;
 
@@ -48,12 +59,17 @@ public class Direction {
         super();
     }
 
-    public Direction(int icon, CharSequence service, CharSequence place, CharSequence oldTime,
-                     CharSequence newTime, boolean isTransit) {
+    public Direction(int icon, CharSequence service, CharSequence place, double originLatitude,
+                     double originLongitude, double destinationLatitude, double destinationLongitude,
+                     CharSequence oldTime, CharSequence newTime, boolean isTransit) {
         super();
         this.setIcon(icon);
         this.service = service;
         this.place = place;
+        this.originLatitude = originLatitude;
+        this.originLongitude = originLongitude;
+        this.destinationLatitude = destinationLatitude;
+        this.destinationLongitude = destinationLongitude;
         this.oldTime = oldTime;
         this.newTime = newTime;
         this.isTransit = isTransit;
@@ -156,5 +172,45 @@ public class Direction {
 
     public void setDirectionText(CharSequence directionText) {
         this.directionText = directionText;
+    }
+
+    public double getOriginLatitude() {
+        return originLatitude;
+    }
+
+    public void setOriginLatitude(double originLatitude) {
+        this.originLatitude = originLatitude;
+    }
+
+    public double getOriginLongitude() {
+        return originLongitude;
+    }
+
+    public void setOriginLongitude(double originLongitude) {
+        this.originLongitude = originLongitude;
+    }
+
+    public double getDestinationLatitude() {
+        return destinationLatitude;
+    }
+
+    public void setDestinationLatitude(double destinationLatitude) {
+        this.destinationLatitude = destinationLatitude;
+    }
+
+    public double getDestinationLongitude() {
+        return destinationLongitude;
+    }
+
+    public void setDestinationLongitude(double destinationLongitude) {
+        this.destinationLongitude = destinationLongitude;
+    }
+
+    public DirectionExpandableListAdapter getAdapter() {
+        return adapter;
+    }
+
+    public void setAdapter(DirectionExpandableListAdapter adapter) {
+        this.adapter = adapter;
     }
 }

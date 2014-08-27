@@ -154,7 +154,7 @@ public class LocationUtil {
         String address = reqs[0];
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
 
-        if (address == null || address.equalsIgnoreCase("") || selectedServer == null) {
+        if (address == null || address.equalsIgnoreCase("")) {
             return null;
         }
 
@@ -203,7 +203,9 @@ public class LocationUtil {
             }
         }
 
-        addresses = filterAddressesBBox(selectedServer, addresses);
+        if (selectedServer != null){
+            addresses = filterAddressesBBox(selectedServer, addresses);
+        }
 
         if ((addresses == null) || addresses.isEmpty()) {
             addresses = searchPlaces(context, selectedServer, address);
@@ -217,7 +219,9 @@ public class LocationUtil {
             }
         }
 
-        addresses = filterAddressesBBox(selectedServer, addresses);
+        if (selectedServer != null){
+            addresses = filterAddressesBBox(selectedServer, addresses);
+        }
 
         addressesReturn.addAll(addresses);
 

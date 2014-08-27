@@ -133,13 +133,8 @@ public class DirectionListFragment extends ExpandableListFragment {
         itineraryList.addAll(fragmentListener.getCurrentItineraryList());
         int currentItineraryIndex = fragmentListener.getCurrentItineraryIndex();
 
-        ArrayList<Direction> directions = new ArrayList<Direction>();
-        DirectionsGenerator dirGen = new DirectionsGenerator(currentItinerary,
-                getActivity().getApplicationContext());
-        ArrayList<Direction> tempDirections = dirGen.getDirections();
-        if (tempDirections != null && !tempDirections.isEmpty()) {
-            directions.addAll(tempDirections);
-        }
+        List<Direction> directions = otpBundle.getDirectionsListByItinerary()
+                .get(otpBundle.getCurrentItineraryIndex());
 
         final Activity activity = this.getActivity();
         Spinner itinerarySelectionSpinner = (Spinner) header.findViewById(R.id.itinerarySelection);
@@ -206,14 +201,8 @@ public class DirectionListFragment extends ExpandableListFragment {
                 setDepartureArrivalHeaders();
 
                 if (!isFragmentFirstLoad) {
-                    ArrayList<Direction> directions = new ArrayList<Direction>();
-                    DirectionsGenerator dirGen = new DirectionsGenerator(
-                            fragmentListener.getCurrentItinerary(),
-                            getActivity().getApplicationContext());
-                    ArrayList<Direction> tempDirections = dirGen.getDirections();
-                    if (tempDirections != null && !tempDirections.isEmpty()) {
-                        directions.addAll(tempDirections);
-                    }
+                    List<Direction> directions = otpBundle.getDirectionsListByItinerary()
+                            .get(position);
 
                     Direction direction_data[] = directions
                             .toArray(new Direction[directions.size()]);
@@ -225,6 +214,9 @@ public class DirectionListFragment extends ExpandableListFragment {
 
                     elv.setAdapter(adapter);
 
+                    for (Direction direction : directions){
+                        direction.setAdapter(adapter);
+                    }
                 }
                 openIfNonTransit();
 
@@ -248,6 +240,10 @@ public class DirectionListFragment extends ExpandableListFragment {
         DirectionExpandableListAdapter adapter = new DirectionExpandableListAdapter(
                 this.getActivity(),
                 R.layout.list_direction_item, R.layout.list_subdirection_item, direction_data);
+
+        for (Direction direction : directions){
+            direction.setAdapter(adapter);
+        }
 
         elv.addHeaderView(header);
 

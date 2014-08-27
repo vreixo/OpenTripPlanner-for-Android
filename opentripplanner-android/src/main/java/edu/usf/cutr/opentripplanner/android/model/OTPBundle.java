@@ -40,6 +40,8 @@ public class OTPBundle implements Serializable {
 
     private List<Itinerary> itineraryList;
 
+    transient private List<List<Direction>> directionsListByItinerary;
+
     private int currentItineraryIndex;
 
     private int currentStepIndex;
@@ -190,5 +192,13 @@ public class OTPBundle implements Serializable {
 
     public void setFromInfoWindow(boolean fromInfoWindow) {
         this.fromInfoWindow = fromInfoWindow;
+    }
+
+    public List<List<Direction>> getDirectionsListByItinerary() {
+        return directionsListByItinerary;
+    }
+
+    public void setDirectionsListByItinerary(List<List<Direction>> directionsListByItinerary) {
+        this.directionsListByItinerary = directionsListByItinerary;
     }
 }

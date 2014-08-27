@@ -9,14 +9,21 @@ public class TripInfo {
 
     String tripId;
 
+    double destinationLatitude;
+
+    double destinationLongitude;
+
     CharSequence snippet;
 
     int delayInSeconds;
 
-    public TripInfo(boolean realtime, String tripId, CharSequence snippet, int delayInSeconds) {
+    public TripInfo(boolean realtime, String tripId, double destinationLatitude,
+                    double destinationLongitude, CharSequence snippet, int delayInSeconds) {
         this.realtime = realtime;
         this.delayInSeconds = delayInSeconds;
         this.tripId = tripId;
+        this.destinationLatitude = destinationLatitude;
+        this.destinationLongitude = destinationLongitude;
         this.snippet = snippet;
     }
 
@@ -50,5 +57,21 @@ public class TripInfo {
 
     public void setSnippet(CharSequence snippet) {
         this.snippet = snippet;
+    }
+
+    public double getDestinationLatitude() {
+        return destinationLatitude;
+    }
+
+    public void setDestinationLatitude(double destinationLatitude) {
+        this.destinationLatitude = destinationLatitude;
+    }
+
+    public double getDestinationLongitude() {
+        return destinationLongitude;
+    }
+
+    public void setDestinationLongitude(double destinationLongitude) {
+        this.destinationLongitude = destinationLongitude;
     }
 }

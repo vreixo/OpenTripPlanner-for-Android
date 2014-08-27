@@ -28,15 +28,24 @@ import org.opentripplanner.api.model.WalkStep;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.location.Location;
 import android.text.SpannableString;
 
+import com.google.android.gms.maps.model.Marker;
+
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
+import edu.usf.cutr.opentripplanner.android.OTPApp;
 import edu.usf.cutr.opentripplanner.android.R;
+import edu.usf.cutr.opentripplanner.android.listeners.OTPGeocodingListener;
 import edu.usf.cutr.opentripplanner.android.model.Direction;
+import edu.usf.cutr.opentripplanner.android.tasks.OTPGeocoding;
 
 /**
  * Generates a set of step-by-step directions that can be shown to the user from a list of trip
@@ -45,7 +54,7 @@ import edu.usf.cutr.opentripplanner.android.model.Direction;
  * @author Khoa Tran
  */
 
-public class DirectionsGenerator {
+public class DirectionsGenerator implements OTPGeocodingListener{
 
     private List<Leg> legs = new ArrayList<Leg>();
 
@@ -56,6 +65,13 @@ public class DirectionsGenerator {
     private double totalTimeTraveled = 0;
 
     private Context applicationContext;
+
+    private Map<Marker, TripInfo> modeMarkers;
+
+    public DirectionsGenerator(Map<Marker, TripInfo> modeMarkers, Context applicationContext) {
+        this.applicationContext = applicationContext;
+        this.modeMarkers = modeMarkers;
+    }
 
     public DirectionsGenerator(List<Leg> legs, Context applicationContext) {
         this.legs.addAll(legs);
@@ -147,17 +163,21 @@ public class DirectionsGenerator {
         String mainDirectionText = action;
         mainDirectionText += fromPlace.name == null ? ""
                 : " " + applicationContext.getResources().getString(R.string.step_by_step_non_transit_from)
-                        + " " + getLocalizedStreetName(fromPlace.name,
-                        applicationContext.getResources());
+                        + " " + getLocalizedStreetName(null, fromPlace);
         mainDirectionText += toPlace.name == null ? ""
                 : " " + applicationContext.getResources().getString(R.string.step_by_step_non_transit_to) + " "
-                        + getLocalizedStreetName(toPlace.name, applicationContext.getResources());
+                        + getLocalizedStreetName(null, toPlace);
         mainDirectionText += toPlace.stopId == null ? ""
                 : " (" + toPlace.stopId.getAgencyId() + " " + toPlace.stopId.getId() + ")";
         mainDirectionText += "\n[" + ConversionUtils
                 .getFormattedDistance(totalDistance, applicationContext)
                 + " ]";
         direction.setDirectionText(mainDirectionText);
+
+        direction.setOriginLatitude(fromPlace.getLat());
+        direction.setOriginLongitude(fromPlace.getLon());
+        direction.setDestinationLatitude(toPlace.getLat());
+        direction.setDestinationLongitude(toPlace.getLon());
 
         //Sub-direction
         List<WalkStep> walkSteps = leg.getSteps();
@@ -178,7 +198,6 @@ public class DirectionsGenerator {
             RelativeDirection relativeDir = step.relativeDirection;
             String relativeDirString = getLocalizedRelativeDir(relativeDir,
                     applicationContext.getResources());
-            String streetName = step.streetName;
             AbsoluteDirection absoluteDir = step.absoluteDirection;
             String absoluteDirString = getLocalizedAbsoluteDir(absoluteDir,
                     applicationContext.getResources());
@@ -202,8 +221,7 @@ public class DirectionsGenerator {
             else {
                 RelativeDirection rDir = RelativeDirection.valueOf(relativeDir.name());
 
-                subdirection_icon = getRelativeDirectionIcon(rDir,
-                        applicationContext.getResources());
+                subdirection_icon = getRelativeDirectionIcon(rDir);
 
                 // Do not need TURN Continue
                 if (rDir.compareTo(RelativeDirection.RIGHT) == 0 ||
@@ -240,7 +258,7 @@ public class DirectionsGenerator {
             }
 
             subDirectionText += streetConnector + " "
-                    + getLocalizedStreetName(streetName, applicationContext.getResources()) + " ";
+                    + getLocalizedStreetName(step, null) + " ";
 
             subDirectionText += "\n[" + ConversionUtils
                     .getFormattedDistance(distance, applicationContext) + " ]";
@@ -248,6 +266,11 @@ public class DirectionsGenerator {
             dir.setDirectionText(subDirectionText);
 
             dir.setIcon(subdirection_icon);
+
+            dir.setOriginLatitude(step.getLat());
+            dir.setOriginLongitude(step.getLon());
+            dir.setDestinationLatitude(step.getLat());
+            dir.setDestinationLongitude(step.getLon());
 
             // Add new sub-direction
             subDirections.add(dir);
@@ -287,47 +310,71 @@ public class DirectionsGenerator {
     }
 
     // Dirty fix to avoid the presence of names for unnamed streets (as road, track, etc.) for other languages than English
-    public static String getLocalizedStreetName(String streetName, Resources resources) {
-        if (streetName != null) {
+    public String getLocalizedStreetName(WalkStep walkStep, Place place) {
+        if (place != null || walkStep != null) {
+            Double latitude, longitude;
+            String streetName;
+            if (place != null){
+                streetName = place.name;
+                latitude = place.lat;
+                longitude = place.lon;
+            }
+            else if (walkStep != null){
+                streetName = walkStep.streetName;
+                latitude = walkStep.lat;
+                longitude = walkStep.lon;
+            }
+            else{
+                return null;
+            }
+            String newStreetName;
+            Resources resources = applicationContext.getResources();
             if (streetName.equals("bike path")) {
-                return resources.getString(R.string.street_type_bike_path);
+                newStreetName = resources.getString(R.string.street_type_bike_path);
             } else if (streetName.equals("open area")) {
-                return resources.getString(R.string.street_type_open_area);
+                newStreetName = resources.getString(R.string.street_type_open_area);
             } else if (streetName.equals("path")) {
-                return resources.getString(R.string.street_type_path);
+                newStreetName = resources.getString(R.string.street_type_path);
             } else if (streetName.equals("bridleway")) {
-                return resources.getString(R.string.street_type_bridleway);
+                newStreetName = resources.getString(R.string.street_type_bridleway);
             } else if (streetName.equals("footpath")) {
-                return resources.getString(R.string.street_type_footpath);
+                newStreetName = resources.getString(R.string.street_type_footpath);
             } else if (streetName.equals("platform")) {
-                return resources.getString(R.string.street_type_platform);
+                newStreetName = resources.getString(R.string.street_type_platform);
             } else if (streetName.equals("footbridge")) {
-                return resources.getString(R.string.street_type_footbridge);
+                newStreetName = resources.getString(R.string.street_type_footbridge);
             } else if (streetName.equals("underpass")) {
-                return resources.getString(R.string.street_type_underpass);
+                newStreetName = resources.getString(R.string.street_type_underpass);
             } else if (streetName.equals("road")) {
-                return resources.getString(R.string.street_type_road);
+                newStreetName = resources.getString(R.string.street_type_road);
             } else if (streetName.equals("ramp")) {
-                return resources.getString(R.string.street_type_ramp);
+                newStreetName = resources.getString(R.string.street_type_ramp);
             } else if (streetName.equals("link")) {
-                return resources.getString(R.string.street_type_link);
+                newStreetName = resources.getString(R.string.street_type_link);
             } else if (streetName.equals("service road")) {
-                return resources.getString(R.string.street_type_service_road);
+                newStreetName = resources.getString(R.string.street_type_service_road);
             } else if (streetName.equals("alley")) {
-                return resources.getString(R.string.street_type_alley);
+                newStreetName = resources.getString(R.string.street_type_alley);
             } else if (streetName.equals("parking aisle")) {
-                return resources.getString(R.string.street_type_parking_aisle);
+                newStreetName = resources.getString(R.string.street_type_parking_aisle);
             } else if (streetName.equals("byway")) {
-                return resources.getString(R.string.street_type_byway);
+                newStreetName = resources.getString(R.string.street_type_byway);
             } else if (streetName.equals("track")) {
-                return resources.getString(R.string.street_type_track);
+                newStreetName = resources.getString(R.string.street_type_track);
             } else if (streetName.equals("sidewalk")) {
-                return resources.getString(R.string.street_type_sidewalk);
+                newStreetName = resources.getString(R.string.street_type_sidewalk);
             } else if (streetName.equals("steps")) {
-                return resources.getString(R.string.street_type_steps);
+                newStreetName = resources.getString(R.string.street_type_steps);
+            } else if (streetName.startsWith("osm:node")) {
+                NumberFormat format = DecimalFormat.getInstance();
+                format.setMaximumFractionDigits(4);
+                newStreetName = format.format(latitude) + ", " + format.format(longitude);
             } else {
                 return streetName;
             }
+            OTPGeocoding otpGeocoding = new OTPGeocoding(applicationContext, walkStep, place, this);
+            otpGeocoding.execute(latitude.toString(), longitude.toString(), newStreetName);
+            return newStreetName;
         }
         return null;
     }
@@ -543,7 +590,7 @@ public class DirectionsGenerator {
         }
     }
 
-    public static int getRelativeDirectionIcon(RelativeDirection relDir, Resources resources) {
+    public static int getRelativeDirectionIcon(RelativeDirection relDir) {
         if (relDir.equals(RelativeDirection.CIRCLE_CLOCKWISE)) {
             return R.drawable.circle_clockwise;
         } else if (relDir.equals(RelativeDirection.CIRCLE_COUNTERCLOCKWISE)) {
@@ -579,7 +626,6 @@ public class DirectionsGenerator {
      * @return the totalDistance
      */
     public double getTotalDistance() {
-        //	totalDistance = Double.valueOf(twoDForm.format(totalDistance));-->VREIXO
         return totalDistance;
     }
 
@@ -593,7 +639,7 @@ public class DirectionsGenerator {
     /**
      * @return the totalTimeTraveled
      */
-    public double getTotalTimeTraveled(Context context) {
+    public double getTotalTimeTraveled() {
         if (legs.isEmpty()) {
             return 0;
         }
@@ -603,9 +649,85 @@ public class DirectionsGenerator {
         Leg legEnd = legs.get(legs.size() - 1);
         String endTimeText = legEnd.endTime;
 
-        totalTimeTraveled = ConversionUtils.getDuration(startTimeText, endTimeText, context);
+        totalTimeTraveled = ConversionUtils.getDuration(startTimeText, endTimeText, applicationContext);
 
         return totalTimeTraveled;
     }
 
+    @Override
+    public void onOTPGeocodingComplete(boolean isStartTextbox, ArrayList<CustomAddress> addressesReturn, boolean geocodingForMarker) {
+
+    }
+
+    @Override
+    public void onOTPGeocodingForOtpGeneratedNameComplete(double originalLatitude, double originalLongitude,
+                                                          String otpGeneratedString, WalkStep walkStep,
+                                                          Place place, ArrayList<CustomAddress> addressesReturn) {
+        if (addressesReturn != null && !addressesReturn.isEmpty()){
+            CustomAddress selectedAddress = addressesReturn.get(0);
+            if (modeMarkers != null){
+                for (Map.Entry<Marker, TripInfo> entry : modeMarkers.entrySet()) {
+                    if ((entry.getValue().getDestinationLatitude() == originalLatitude)
+                            && (entry.getValue().getDestinationLongitude() == originalLongitude)){
+                        String newTitle = entry.getKey().getTitle();
+                        if (selectedAddress.getStringAddress(true) != null){
+                            String newStringAddress = selectedAddress.getStringAddress(true).split("\n")[0];
+                            newTitle = newTitle.replace(otpGeneratedString,
+                                    newStringAddress);
+                            entry.getKey().setTitle(newTitle);
+                        }
+                    }
+                }
+            }
+            else{
+                for (Direction direction : directions) {
+                    updateDirectionContents(direction, selectedAddress, originalLatitude,
+                            originalLongitude, otpGeneratedString, walkStep, place);
+                    if (direction.getSubDirections() != null){
+                        for (Direction subDirection : direction.getSubDirections()){
+                            updateDirectionContents(subDirection, selectedAddress, originalLatitude,
+                                    originalLongitude, otpGeneratedString, walkStep, place);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void updateDirectionContents(Direction direction, CustomAddress selectedAddress,
+                                         double originalLatitude, double originalLongitude,
+                                         String otpGeneratedString, WalkStep walkStep, Place place){
+        if ((((direction.getOriginLatitude() == originalLatitude)
+                && (direction.getOriginLongitude() == originalLongitude)))
+                || ((direction.getDestinationLatitude() == originalLatitude)
+                && (direction.getDestinationLongitude() == originalLongitude))) {
+            if (direction.getDirectionText() != null){
+                String newDirectionText = direction.getDirectionText().toString();
+                if (selectedAddress.getStringAddress(true) != null) {
+                    String newStringAddress = selectedAddress.getStringAddress(true).split("\n")[0];
+                    newDirectionText =
+                            newDirectionText.replace(otpGeneratedString,
+                                    newStringAddress);
+                    direction.setDirectionText(newDirectionText);
+                    if (direction.getAdapter() != null){
+                        direction.getAdapter().notifyDataSetChanged();
+                    }
+
+                    for (Leg leg : legs){
+                        for (WalkStep walkStepInList : leg.getSteps()){
+                            if (walkStepInList.equals(walkStep)){
+                                walkStepInList.setStreetName(newStringAddress);
+                            }
+                        }
+                        if (leg.from.equals(place)){
+                            leg.from.setName(newStringAddress);
+                        }
+                        else if (leg.to.equals(place)){
+                            leg.to.setName(newStringAddress);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
